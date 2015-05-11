@@ -35,6 +35,9 @@ fp.write('''
 <table>
   <thead>
     <tr>
+        <td colspan="4" align="center"><a href="https://docs.google.com/spreadsheets/d/1V75IDtU8GWH2sX5G0dKQDH6K2RX5RZaoJQX0MoIEW4g/edit#gid=0"><b>Builds Reservation Sheet</b></a></td>
+    </tr>
+    <tr>
       <th>Build number</th>
       <th>Who triggered it?</th>
       <th>What's it for?</th>

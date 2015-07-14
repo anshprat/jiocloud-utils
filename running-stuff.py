@@ -10,14 +10,36 @@ def p(s):
     sys.stdout.flush()
 
 p('Getting list of running jobs')
+##
+# The regex needs to be in raw string as \ collides w/ python usage
+# From https://docs.python.org/2/library/re.html#module-re
+#
+# Regular expressions use the backslash character ('\') to indicate special
+# forms or to allow special characters to be used without invoking their
+# special meaning. This collides with Pythons usage of the same character
+# for the same purpose in string literals
+#
+# The solution is to use Pythons raw string notation for regular expression
+# patterns
+##
 
-proc = subprocess.Popen('nova list | grep puppet-rjil-gate | cut -f6-9 -d- '
-                        '| cut -f1 -d" " | sort | uniq -c', shell=True,
+cmd = r'nova list --fields name | grep puppet-rjil-gate |sed "s/.*_[a-zA-Z0-9]*-\([a-zA-Z0-9\-]*\).*/\1/" | sort| uniq -c'
+proc = subprocess.Popen(cmd, shell=True,
                         stdout=subprocess.PIPE)
 stdout, _stderr = proc.communicate()
 
-jobs = {}
+##
+# Because of the uniq -c, it always becomes exit 0 from subprocess
+# Hence checking stdout length instead for determining if we have useful output
+##
+if len(stdout) is 0:
+    exit(1)
 
+jobs = {}
+job_builds = {'gate':'puppet-rjil-gate',
+              'overcloud':'puppet-rjil-gate-overcloud',
+              'undercloud':'puppet-rjil-gate-undercloud'
+              }
 fp = open('running.html', 'w')
 
 for l in stdout.split('\n'):
@@ -25,7 +47,7 @@ for l in stdout.split('\n'):
     if not l:
         continue
     count, job = l.split(' ')
-    job_number = int(job.split('-')[-1])
+    job_number = '-'.join(job.split('-')[-2:])
     jobs[job_number] = int(count)
 
 jenkins = jenkins.Jenkins(url='http://jiocloud.rustedhalo.com:8080')
@@ -50,7 +72,7 @@ fp.write('''
 
 for job in jobs:
     p('Getting info for job %s' % (job,))
-    build = jenkins.get_build_info('puppet-rjil-gate', job)
+    build = jenkins.get_build_info(job_builds[job.split('-')[-2]], int(job.split('-')[-1]))
     params = dict([(x['name'], x['value']) for x in build['actions'][0]['parameters']])
     running_for = (now-(build['timestamp']/1000))/60
     fp.write('''
@@ -62,7 +84,7 @@ for job in jobs:
       <td>$%.2f</td>
       <td><a href="http://jiocloud.rustedhalo.com:8080/job/puppet-rjil-gate-delete/buildWithParameters?jobid=%s">Terminate</a></td>
     </tr>
-''' % (build['url'], job, params['ghprbTriggerAuthor'], build['description'], running_for, (running_for/60)*1.17, job))
+''' % (build['url'], job, params['ghprbTriggerAuthor'], build['description'], running_for, (running_for/60)*1.17, job.replace('gate-','')))
 
 fp.write('''
   </tbody>

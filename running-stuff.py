@@ -75,6 +75,14 @@ for job in jobs:
     build = jenkins.get_build_info(job_builds[job.split('-')[-2]], int(job.split('-')[-1]))
     params = dict([(x['name'], x['value']) for x in build['actions'][0]['parameters']])
     running_for = (now-(build['timestamp']/1000))/60
+    if "undercloud" in job:
+        job_name = "undercloud-"
+    else:
+        job_name = ""
+    if "overcloud" in job:
+        job_id_del = job
+    else:
+        job_id_del = job.split('-')[-1]
     fp.write('''
     <tr>
       <td><a href="%s">%s</a></td>
@@ -82,9 +90,9 @@ for job in jobs:
       <td>%s</td>
       <td>%s</td>
       <td>$%.2f</td>
-      <td><a href="http://jiocloud.rustedhalo.com:8080/job/puppet-rjil-gate-delete/buildWithParameters?jobid=%s">Terminate</a></td>
+      <td><a href="http://jiocloud.rustedhalo.com:8080/job/puppet-rjil-gate-%sdelete/buildWithParameters?jobid=%s">Terminate</a></td>
     </tr>
-''' % (build['url'], job, params['ghprbTriggerAuthor'], build['description'], running_for, (running_for/60)*1.17, job.replace('gate-','')))
+''' % (build['url'], job, params['ghprbTriggerAuthor'], build['description'], running_for, (running_for/60)*1.17, job_name, job_id_del))
 
 fp.write('''
   </tbody>
